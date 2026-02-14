@@ -13,34 +13,101 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
+import { getFirstWorking } from "../../api";
 
-const COLORS = ["#2563EB", "#f6993b", "#b04fec", "#93C5FD", "#ccde29"];
+const COLORS = ["#2563EB", "#168628", "#de881f", "#8d17b1", "#ccde29"];
 
 export default function AdminFeedback() {
   const [stats, setStats] = useState(null);
   const [aiInsight, setAiInsight] = useState("");
+  const [errMsg, setErrMsg] = useState("");
 
   useEffect(() => {
-    axios.get("http://localhost:8000/api/stats")
-      .then(res => setStats(res.data))
-      .catch(err => console.error("Stats error:", err));
 
-    axios.get("http://127.0.0.1:8000/api/ai-suggestion")
-      .then(res => setAiInsight(res.data.suggestion))
-      .catch(err => console.error("AI error:", err));
+    async function load() {
+      try {
+        setErrMsg("");
+
+        // ✅ Your backend (from earlier code) uses /api/stats
+        const statsTry = await getFirstWorking([
+  "/api/stats",
+  "/stats",
+  "/dashboard",
+  "/api/dashboard",
+]);
+console.log("✅ Stats loaded from:", statsTry.path);
+setStats(statsTry.data);
+
+      } catch (err) {
+        console.error("Stats error:", err);
+        setErrMsg(
+          `Stats API failed. Open ${API}/docs and check if /api/stats exists.`
+        );
+        return; // no point calling AI if stats itself failed
+      }
+
+      try {
+        // ✅ Your backend (from earlier code) uses /api/ai-suggestion
+        try {
+  const aiTry = await getFirstWorking([
+    "/api/ai-suggestion",
+    "/ai-suggestion",
+    "/api/suggestion",
+    "/suggestion",
+  ]);
+  console.log("✅ AI loaded from:", aiTry.path);
+  setAiInsight(aiTry.data?.suggestion || aiTry.data?.insight || "");
+} catch (err) {
+  console.error("AI error:", err);
+  setAiInsight("AI insight unavailable (endpoint error).");
+}
+
+      } catch (err) {
+        console.error("AI error:", err);
+        setAiInsight("AI insight unavailable (endpoint error).");
+      }
+    }
+
+    load();
   }, []);
 
-  if (!stats)
+  if (errMsg) {
+    return (
+      <div style={{ padding: "40px" }}>
+        <div
+          style={{
+            padding: "16px",
+            borderRadius: "12px",
+            background: "#FEF2F2",
+            color: "#991B1B",
+            fontWeight: 600,
+          }}
+        >
+          {errMsg}
+        </div>
+
+        <div style={{ marginTop: 12, color: "#374151" }}>
+          Quick check:
+          <ul style={{ marginTop: 8 }}>
+            <li>1) Open: <b>http://127.0.0.1:8000/docs</b></li>
+            <li>2) See whether you have <b>/api/stats</b> and <b>/api/ai-suggestion</b></li>
+            <li>3) If they are instead <b>/stats</b> and <b>/ai-suggestion</b>, tell me and I’ll give the matching code.</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
+  if (!stats) {
     return (
       <div style={{ padding: "40px", fontSize: "20px", fontWeight: "600" }}>
         Loading analytics...
       </div>
     );
+  }
 
   return (
     <div style={{ padding: "40px" }}>
-
-      {/* MAIN HEADING */}
       <h2
         style={{
           fontSize: "36px",
@@ -53,8 +120,15 @@ export default function AdminFeedback() {
       </h2>
 
       {/* KPI CARDS */}
-      <div style={{ display: "flex", gap: "25px", marginBottom: "50px", flexWrap: "wrap" }}>
-        {stats.priority_summary.map((item, index) => (
+      <div
+        style={{
+          display: "flex",
+          gap: "25px",
+          marginBottom: "50px",
+          flexWrap: "wrap",
+        }}
+      >
+        {(stats.priority_summary || []).map((item, index) => (
           <div
             key={index}
             style={{
@@ -64,7 +138,7 @@ export default function AdminFeedback() {
               minWidth: "180px",
               textAlign: "center",
               color: "white",
-              boxShadow: "0 8px 20px rgba(37, 99, 235, 0.2)"
+              boxShadow: "0 8px 20px rgba(37, 99, 235, 0.2)",
             }}
           >
             <h3 style={{ fontSize: "34px", fontWeight: "700" }}>
@@ -84,7 +158,7 @@ export default function AdminFeedback() {
             fontSize: "24px",
             fontWeight: "700",
             color: "#1E3A8A",
-            marginBottom: "20px"
+            marginBottom: "20px",
           }}
         >
           Status Distribution
@@ -93,14 +167,17 @@ export default function AdminFeedback() {
         <ResponsiveContainer>
           <PieChart>
             <Pie
-              data={stats.status_distribution}
+              data={stats.status_distribution || []}
               dataKey="count"
               nameKey="status"
               outerRadius={120}
               label
             >
-              {stats.status_distribution.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              {(stats.status_distribution || []).map((_, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
               ))}
             </Pie>
             <Tooltip />
@@ -116,14 +193,14 @@ export default function AdminFeedback() {
             fontSize: "24px",
             fontWeight: "700",
             color: "#1E3A8A",
-            marginBottom: "20px"
+            marginBottom: "20px",
           }}
         >
           Department Complaint Volume
         </h3>
 
         <ResponsiveContainer>
-          <BarChart data={stats.department_volume}>
+          <BarChart data={stats.department_volume || []}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="department" />
             <YAxis />
@@ -142,12 +219,11 @@ export default function AdminFeedback() {
           fontWeight: "600",
           fontSize: "16px",
           color: "#1E3A8A",
-          boxShadow: "0 6px 18px rgba(37, 99, 235, 0.15)"
+          boxShadow: "0 6px 18px rgba(37, 99, 235, 0.15)",
         }}
       >
         🤖 AI Insight: {aiInsight || "Analyzing trends..."}
       </div>
-
     </div>
   );
 }

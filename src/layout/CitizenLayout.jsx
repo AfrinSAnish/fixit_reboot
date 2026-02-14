@@ -6,7 +6,7 @@ export default function CitizenLayout({ children }) {
   const navigate = useNavigate();
 
   const navItems = [
-    { name: "Home", path: "/" },
+    { name: "Home", path: "/dashboard" }, // ✅ FIX: was "/"
     { name: "My Complaints", path: "/my-complaints" },
     { name: "Raise Complaint", path: "/raise-complaint" },
     { name: "Profile", path: "/profile" },
@@ -19,10 +19,8 @@ export default function CitizenLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-[#1F2937] flex">
-
       {/* Sidebar */}
       <div className="w-64 bg-[#1E3A8A] text-white p-8 flex flex-col">
-
         {/* Logo */}
         <div className="flex items-center mb-12 space-x-3">
           <img src={logo} alt="FIXit Logo" className="w-10 h-10" />
@@ -67,14 +65,10 @@ export default function CitizenLayout({ children }) {
         >
           Logout
         </button>
-
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-12">
-        {children}
-      </div>
-
+      <div className="flex-1 p-12">{children}</div>
     </div>
   );
 }

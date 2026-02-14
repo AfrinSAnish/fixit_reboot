@@ -1,36 +1,25 @@
 import { useNavigate, NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import logo from "../../assets/fixit_logo.png";
 
 function AdminComplaints() {
   const navigate = useNavigate();
+  const [complaints, setComplaints] = useState([]);
 
-  const complaints = [
-    {
-      id: 1,
-      title: "Street Light Broken",
-      ward: "Ward 12",
-      zone: "Zone A",
-      description:
-        "Street light near Phoenix Mall junction has been non-functional for the past week.",
-      date: "10 Feb · 4:30 PM",
-      status: "In Progress",
-    },
-    {
-      id: 2,
-      title: "Pothole on Main Road",
-      ward: "Ward 8",
-      zone: "Zone B",
-      description:
-        "Large pothole on MG Road causing traffic disruption and vehicle damage.",
-      date: "12 Feb · 9:15 AM",
-      status: "Acknowledged",
-    },
-  ];
+  useEffect(() => {
+    axios.get("http://127.0.0.1:8000/api/admin/complaints")
+
+      .then(res => setComplaints(res.data))
+      .catch(err => console.error("Error fetching complaints:", err));
+  }, []);
 
   const statusStyles = {
     "In Progress": "bg-yellow-100 text-yellow-700",
     Acknowledged: "bg-blue-100 text-blue-700",
     Resolved: "bg-green-100 text-green-700",
+    Escalated: "bg-red-100 text-red-700",
+    Reported: "bg-gray-100 text-gray-700",
   };
 
   return (
@@ -44,55 +33,19 @@ function AdminComplaints() {
         </div>
 
         <ul className="space-y-4">
-          <NavLink
-            to="/admin-dashboard"
-            className={({ isActive }) =>
-              `block px-4 py-2 rounded-lg transition ${
-                isActive
-                  ? "bg-white text-[#1E3A8A] font-semibold"
-                  : "hover:bg-[#2C4DB0]"
-              }`
-            }
-          >
+          <NavLink to="/admin-dashboard" className="block px-4 py-2 rounded-lg hover:bg-[#2C4DB0]">
             Dashboard
           </NavLink>
 
-          <NavLink
-            to="/admin-heatmap"
-            className={({ isActive }) =>
-              `block px-4 py-2 rounded-lg transition ${
-                isActive
-                  ? "bg-white text-[#1E3A8A] font-semibold"
-                  : "hover:bg-[#2C4DB0]"
-              }`
-            }
-          >
+          <NavLink to="/admin-heatmap" className="block px-4 py-2 rounded-lg hover:bg-[#2C4DB0]">
             Heatmap
           </NavLink>
 
-          <NavLink
-            to="/admin-complaints"
-            className={({ isActive }) =>
-              `block px-4 py-2 rounded-lg transition ${
-                isActive
-                  ? "bg-white text-[#1E3A8A] font-semibold"
-                  : "hover:bg-[#2C4DB0]"
-              }`
-            }
-          >
+          <NavLink to="/admin-complaints" className="block px-4 py-2 rounded-lg bg-white text-[#1E3A8A] font-semibold">
             Complaints
           </NavLink>
 
-          <NavLink
-            to="/admin-feedback"
-            className={({ isActive }) =>
-              `block px-4 py-2 rounded-lg transition ${
-                isActive
-                  ? "bg-white text-[#1E3A8A] font-semibold"
-                  : "hover:bg-[#2C4DB0]"
-              }`
-            }
-          >
+          <NavLink to="/admin-feedback" className="block px-4 py-2 rounded-lg hover:bg-[#2C4DB0]">
             Analytics
           </NavLink>
 
@@ -117,11 +70,11 @@ function AdminComplaints() {
             >
               <div>
                 <h2 className="text-xl font-semibold mb-2">
-                  {complaint.title}
+                  {complaint.title || complaint.type}
                 </h2>
 
                 <p className="text-sm text-gray-500 mb-2">
-                  {complaint.ward}, {complaint.zone}
+                  {complaint.ward || ""} {complaint.zone || ""}
                 </p>
 
                 <p className="text-gray-600 mb-3">
@@ -135,16 +88,15 @@ function AdminComplaints() {
 
               <div className="flex flex-col items-end justify-between">
                 <span
-                  className={`px-4 py-1 rounded-full text-sm font-medium ${statusStyles[complaint.status]}`}
+                  className={`px-4 py-1 rounded-full text-sm font-medium ${
+                    statusStyles[complaint.status] || "bg-gray-100"
+                  }`}
                 >
                   {complaint.status}
                 </span>
 
-                {/* ✅ FIXED BUTTON */}
                 <button
-                  onClick={() =>
-                    navigate(`/complaints/${complaint.id}`)
-                  }
+                  onClick={() => navigate(`/complaints/${complaint.id}`)}
                   className="mt-4 bg-[#1E3A8A] text-white px-5 py-2 rounded-lg hover:bg-[#16307A] transition"
                 >
                   View Details
@@ -153,6 +105,7 @@ function AdminComplaints() {
             </div>
           ))}
         </div>
+
       </div>
     </div>
   );

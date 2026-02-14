@@ -618,3 +618,166 @@ def nearby_complaints(body: NearbyComplaintsQuery):
             if conn: conn.close()
         except:
             pass
+
+
+# ===================== ADMIN STATS =====================
+@app.get("/api/stats")
+def admin_stats():
+    conn = None
+    cursor = None
+    try:
+        conn = get_conn()
+        cursor = conn.cursor(dictionary=True)
+
+        # Total complaints today
+        cursor.execute("""
+            SELECT COUNT(*) as total_today
+            FROM complaints
+            WHERE DATE(reported_at) = CURDATE()
+        """)
+        total_today = cursor.fetchone()["total_today"]
+
+        # Escalated today
+        cursor.execute("""
+            SELECT COUNT(*) as escalated_today
+            FROM complaints
+            WHERE DATE(escalated_at) = CURDATE()
+        """)
+        escalated_today = cursor.fetchone()["escalated_today"]
+
+        # Total users
+        cursor.execute("SELECT COUNT(*) as total_users FROM users")
+        total_users = cursor.fetchone()["total_users"]
+
+        # Active tickets (not resolved)
+        cursor.execute("""
+            SELECT COUNT(*) as active_tickets
+            FROM complaints
+            WHERE status <> 'Resolved'
+        """)
+        active_tickets = cursor.fetchone()["active_tickets"]
+
+        # Priority summary
+        cursor.execute("""
+            SELECT priority, COUNT(*) as count
+            FROM complaints
+            GROUP BY priority
+        """)
+        priority_summary = cursor.fetchall()
+
+        # Status distribution
+        cursor.execute("""
+            SELECT status, COUNT(*) as count
+            FROM complaints
+            GROUP BY status
+        """)
+        status_distribution = cursor.fetchall()
+
+        # Department volume
+        cursor.execute("""
+            SELECT department, COUNT(*) as count
+            FROM complaints
+            GROUP BY department
+        """)
+        department_volume = cursor.fetchall()
+
+        return {
+            "total_today": total_today,
+            "percentage_change": 0,
+            "escalated_today": escalated_today,
+            "total_users": total_users,
+            "active_tickets": active_tickets,
+            "priority_summary": priority_summary,
+            "status_distribution": status_distribution,
+            "department_volume": department_volume
+        }
+
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+# ===================== ESCALATIONS LIST =====================
+@app.get("/escalations")
+def get_escalations():
+    conn = None
+    cursor = None
+    try:
+        conn = get_conn()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT id, type, priority, department
+            FROM complaints
+            WHERE status = 'Escalated'
+            ORDER BY escalated_at DESC
+            LIMIT 10
+        """)
+
+        rows = cursor.fetchall()
+
+        return {"escalated": rows}
+
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+# ===================== AI SUGGESTION =====================
+@app.get("/api/ai-suggestion")
+def ai_suggestion():
+    conn = None
+    cursor = None
+    try:
+        conn = get_conn()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT department, COUNT(*) as count
+            FROM complaints
+            GROUP BY department
+            ORDER BY count DESC
+            LIMIT 1
+        """)
+        top = cursor.fetchone()
+
+        if not top:
+            return {"suggestion": "No data available yet."}
+
+        return {
+            "suggestion": f"Most complaints are from {top['department']}. Consider allocating more resources there."
+        }
+
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+# ===================== ADMIN GET ALL COMPLAINTS =====================
+@app.get("/api/admin/complaints")
+def get_all_complaints():
+    conn = None
+    cursor = None
+    try:
+        conn = get_conn()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT 
+                c.id,
+                c.type,
+                c.description,
+                c.status,
+                c.priority,
+                c.department,
+                c.reported_at,
+                u.location_text
+            FROM complaints c
+            JOIN users u ON u.id = c.user_id
+            ORDER BY c.reported_at DESC
+        """)
+
+        rows = cursor.fetchall()
+        return rows
+
+    except sql.Error as e:
+        raise HTTPException(status_code=500, detail=f"MySQL error: {str(e)}")
+
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
