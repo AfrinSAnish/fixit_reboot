@@ -1,0 +1,29 @@
+import mysql.connector
+
+def get_time_metrics():
+    connection = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="Tuktuk@2008",
+        database="complaints_db"
+    )
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT AVG(TIMESTAMPDIFF(HOUR, reported_at, acknowledged_at)) 
+        AS avg_response_time
+        FROM complaints
+        WHERE acknowledged_at IS NOT NULL
+    """)
+    avg_response = cursor.fetchone()["avg_response_time"]
+    cursor.execute("""
+        SELECT AVG(TIMESTAMPDIFF(HOUR, reported_at, resolved_at)) 
+        AS avg_resolution_time
+        FROM complaints
+        WHERE resolved_at IS NOT NULL
+    """)
+    avg_resolution = cursor.fetchone()["avg_resolution_time"]
+    connection.close()
+    return {
+        "avg_response_time_hours": round(avg_response or 0, 2),
+        "avg_resolution_time_hours": round(avg_resolution or 0, 2)
+    }
